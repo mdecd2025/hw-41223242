@@ -144,7 +144,113 @@ img.add_border {
         </header>
     <div id="tipue_search_content">supervisor Robots << <a href='supervisor Robots.html'>Previous</a> <a href='counter supervisor.html'>Next</a> >> counter supervisor<br /><h1>stand youbots</h1>
 <p></p>
-<br />supervisor Robots << <a href='supervisor Robots.html'>Previous</a> <a href='counter supervisor.html'>Next</a> >> counter supervisor</div>
+<pre class="brush:py;toolbar:false" contenteditable="false">from controller import Robot, Keyboard
+
+# === 機器人設定參數 ===
+WHEEL_RADIUS = 0.1  # 輪子半徑 (單位: 公尺)
+L = 0.471           # 機器人長度一半
+W = 0.376           # 機器人寬度一半
+MAX_VELOCITY = 10.0 # 最大輪速
+
+# === 初始化機器人與裝置 ===
+robot = Robot()
+timestep = int(robot.getBasicTimeStep())
+
+# 得分發射器
+emitter = robot.getDevice("score_emitter")
+score_to_send = 2  # 每次得分傳送的分數
+
+# 紅外線距離感測器
+sensor = robot.getDevice('sensor')
+sensor.enable(timestep)
+
+# 鍵盤初始化
+keyboard = Keyboard()
+keyboard.enable(timestep)
+
+# 四顆輪子（以機器人右前、左前、右後、左後順序）
+wheel5 = robot.getDevice("wheel5")
+wheel6 = robot.getDevice("wheel6")
+wheel7 = robot.getDevice("wheel7")
+wheel8 = robot.getDevice("wheel8")
+
+for wheel in [wheel5, wheel6, wheel7, wheel8]:
+    wheel.setPosition(float('inf'))  # 啟用速度控制模式
+    wheel.setVelocity(0)
+
+# 設定輪速函式
+def set_wheel_velocity(v1, v2, v3, v4):
+    wheel5.setVelocity(v1)
+    wheel6.setVelocity(v2)
+    wheel7.setVelocity(v3)
+    wheel8.setVelocity(v4)
+
+# === 紅外線感測 AD值對應距離表 ===
+lookup_table = [
+    (1000, 0.00),
+    (620, 0.12),
+    (372, 0.13),
+    (248, 0.14),
+    (186, 0.15),
+    (0, 0.18)
+]
+
+# 根據 AD值做線性插值換算為距離
+def ad_to_distance(ad_value):
+    for i in range(len(lookup_table)-1):
+        a0, d0 = lookup_table[i]
+        a1, d1 = lookup_table[i+1]
+        if a1 &lt;= ad_value &lt;= a0:
+            return d0 + (d1 - d0) * (ad_value - a0) / (a1 - a0)
+    if ad_value &gt; lookup_table[0][0]:
+        return lookup_table[0][1]
+    return lookup_table[-1][1]
+
+# === 主要狀態 ===
+score = 0
+last_score_time = 0
+cooldown = 1.0  # 每次得分之間的冷卻時間（秒）
+
+# === 說明提示 ===
+print("Use 'E', 'X', 'S', 'D' keys to control the robot.")
+print("E: Move forward, X: Move backward, S: Turn left, D: Turn right.")
+print("Press 'Q' to quit.")
+
+# === 主迴圈 ===
+while robot.step(timestep) != -1:
+    key = keyboard.getKey()  # 讀取按鍵
+    sensor_value = sensor.getValue()
+    distance = ad_to_distance(sensor_value)
+    current_time = robot.getTime()
+
+    # 測試模式：按 M 或 K 可印出距離
+    if key == ord('M') or key == ord('m') or key == ord('K') or key == ord('k'):
+        print(distance)
+
+    # 得分偵測邏輯：當球進入一定距離範圍
+    if distance &lt; 0.11 and (current_time - last_score_time) &gt; cooldown:
+        score += score_to_send
+        print("得分")
+        print(distance)
+        emitter.send(str(score_to_send).encode('utf-8'))  # 傳送得分訊息
+        last_score_time = current_time
+
+    # === 鍵盤操控 ===
+    if key == ord('E') or key == ord('e'):
+        set_wheel_velocity(MAX_VELOCITY, MAX_VELOCITY, MAX_VELOCITY, MAX_VELOCITY)  # 前進
+    elif key == ord('X') or key == ord('x'):
+        set_wheel_velocity(-MAX_VELOCITY, -MAX_VELOCITY, -MAX_VELOCITY, -MAX_VELOCITY)  # 後退
+    elif key == ord('D') or key == ord('d'):
+        set_wheel_velocity(-MAX_VELOCITY, MAX_VELOCITY, -MAX_VELOCITY, MAX_VELOCITY)  # 右轉
+    elif key == ord('S') or key == ord('s'):
+        set_wheel_velocity(MAX_VELOCITY, -MAX_VELOCITY, MAX_VELOCITY, -MAX_VELOCITY)  # 左轉
+    elif key == ord('Q') or key == ord('q'):
+        print("Exiting...")
+        break
+    else:
+        set_wheel_velocity(0, 0, 0, 0)  # 沒按鍵則停止
+</pre>
+<p>E前進X後退S左D右</p><br />supervisor Robots << <a href='supervisor Robots.html'>Previous</a> <a href='counter supervisor.html'>Next</a> >> counter supervisor</div>
         
     <!-- footer -->
       <div class="container">
